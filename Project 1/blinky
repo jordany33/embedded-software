@@ -1,39 +1,43 @@
-#include <stdint.h>
 
-// Memory-mapped addresses for GPIO (General Purpose Input/Output) Register access
-#define RCGCGPIO (*((volatile uint32_t *)0x400FE608)) // GPIO Run Mode Clock Gating Control
-#define GPIODEN  (*((volatile uint32_t *)0x4002551C)) // GPIO Digital Enable
-#define GPIODIR  (*((volatile uint32_t *)0x40025400)) // GPIO Direction
-#define GPIODATA_F (*((volatile uint32_t *)0x40025010)) // GPIO Data for Port F
+#define RCGCGPIO (*((volatile unsigned long *) 0x400FE608))
+//The address here is the base address for system control registers + the offset for the GPIO port clock gating to control the peripheral for ports
+
+#define GPIODEN (*((volatile unsigned long *) 0x4002551C))
+//The address here is the base address for port f + the offset that enables digital operations on it's pins
+#define GPIODIR (*((volatile unsigned long *) 0x40025400))
+//The address here is the base address for port f + the offset for it's corresponding GPIODIR
+
+#define GPIODATA_F (*((volatile unsigned long *) 0x40025010))
+//The address here is the base address for port f + the offset for it's corresponding pins that we want to turn high while we mask the rest
 
 /**
  * main.c
- * Purpose: Toggle a GPIO pin on and off in an infinite loop.
  */
-int main(void) {
-    // Enable clock for GPIO Port F
+int main(void)
+{
     RCGCGPIO = 0x00000020;
-    
-    // Set the GPIO pin as digital
+    //This is us turning on the clocking of port f
+
     GPIODEN = 0x00000004;
-    
-    // Set the GPIO pin as an output
+    //This is us turning on the digital operation enabler for pin PF2
+
     GPIODIR = 0x00000004;
-    
-    // Loop infinitely
-    while (1) {
-        // Set the GPIO pin high
+    //This is us setting the PF2 pin's direction to be output
+
+    while (1) //Loop that lets us blink the led
+    {
         GPIODATA_F = 0x00000004;
-        
-        // Simple delay loop
-        for (int i = 0; i < 1000000; i++) {}
-        
-        // Set the GPIO pin low
+        //Turning on the led by setting the PF2 value to be 1
+
+        int i;
+        for (i = 0; i < 1000000; i++) {}
+        //Delay
+
         GPIODATA_F = 0x00000000;
-        
-        // Simple delay loop
-        for (int i = 0; i < 1000000; i++) {}
+        //Turning off the led by setting the PF2 value to be 1
+
+        for (i = 0; i < 1000000; i++) {}
+        //Delay
     }
-    // Code never reaches this point
-    return 0;
+	return 0;
 }
