@@ -1,2 +1,2 @@
 # embedded-software
-locker for cs 145
+cs 145
