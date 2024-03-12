@@ -1,23 +1,23 @@
 //The address here is the base address for system control registers + the offset for the GPIO port clock gating to control the peripheral for ports
 #define RCGCGPIO (*((volatile unsigned long *) 0x400FE608))
 
-//The address here is the base address for system control registers + the offset for the UART clock gating to enable the clock for UART
-#define RCGCUART (*((volatile unsigned long *) 0x400FE618))
-
 //The address here is the base address for port A + the offset that enables digital operations on it's pins
 #define GPIODENA (*((volatile unsigned long *) 0x4000451C))
 
 //The address here is the base address for port A + the offset for it's corresponding GPIODIR
 #define GPIODIRA (*((volatile unsigned long *) 0x40004400))
 
-//The address here is the base address for port A + the offset for it's corresponding GPIOPCTL
-#define GPIOPCTL (*((volatile unsigned long *) 0x4000452C))
+//The address here is the base address for port A + the offset for the pins PA3-PA5, Register Select, Read/Write, and Enable Input respectively
+#define GPIODATA_A (*((volatile unsigned long *) 0x400040E0))
 
-//The address here is the base address for port A + the offset for it's corresponding GPIOAFSEL
-#define GPIOAFSEL (*((volatile unsigned long *) 0x40004420))
+//The address here is the base address for port B + the offset that enables digital operations on it's pins
+#define GPIODENB (*((volatile unsigned long *) 0x4000551C))
 
-//The address here is the base address for port A + the offset for the pins PA2 and PA5
-#define GPIODATA_A (*((volatile unsigned long *) 0x40004090))
+//The address here is the base address for port B + the offset for it's corresponding GPIODIR
+#define GPIODIRB (*((volatile unsigned long *) 0x40005400))
+
+//The address here is the base address for port B + the offset for the pins PB0-PB7
+#define GPIODATA_B (*((volatile unsigned long *) 0x400053FC))
 
 //The address here is the base address for port C + the offset that enables digital operations on it's pins
 #define GPIODENC (*((volatile unsigned long *) 0x4000651C))
@@ -40,102 +40,255 @@
 //The address here is the base address for port E + the offset for the pins PC4-PC7
 #define GPIODATA_E (*((volatile unsigned long *) 0x40024078))
 
-//The address here is the base address for port A + the offset for it's corresponding GPIOIM
-#define GPIOIM (*((volatile unsigned long *) 0x40004410))
+//mask
+#define RS 0x8;
+#define RW 0x10;
+#define EN 0x20;
+//A state is 0, B state is 1, Display state is 2, global so we can modify it in functions
+//Might merge start/initial state
+int state = 0;
+//Tracking nums a and b and the current number of digits for the state
+int a = 0;
+int b = 0;
+int curDigitNum = 0;
 
-//The address here is the base address for port A + the offset for it's corresponding GPIOIS
-#define GPIOIS (*((volatile unsigned long *) 0x40004404))
-
-//The address here is the base address for port A + the offset for it's corresponding GPIOIEV
-#define GPIOIEV (*((volatile unsigned long *) 0x4000440C))
-
-//The address here is the base address for port A + the offset for it's corresponding GPIOICR
-//#define GPIOICR (*((volatile unsigned long *) 0x4000441C)) didn't end up using it
-
-//The address here is the base address for UART0//UART0DR (the data we send or receive)
-#define UART0DR (*((volatile unsigned long *) 0x4000C000))
-
-//The address here is the base address for UART0 + the offset for UART0FR, the flag register which contains transmit/receive status of UART0
-#define UART0FR (*((volatile unsigned long *) 0x4000C018))
-
-//The address here is the base address for UART0 + the offset for it's UARTIBRD
-#define UART0IBRD (*((volatile unsigned long *) 0x4000C024))
-
-//The address here is the base address for UART0 + the offset for it's UARTFBRD
-#define UART0FBRD (*((volatile unsigned long *) 0x4000C028))
-
-//The address here is the base address for UART0 + the offset for it's UARTCTL
-#define UART0CTL (*((volatile unsigned long *) 0x4000C030))
-
-//The address here is the base address for UART0 + the offset for it's UART0LCRH
-#define UART0LCRH (*((volatile unsigned long *) 0x4000C02C))
-
-//The address here is the base address for system control registers + the offset for the clock gating of the timer
-#define RCGCTIMER (*((volatile unsigned long *) 0x400FE604))
-
-//The address here is the base address for core peripherals + the offset for NVIC register EN0
-#define EN0 (*((volatile unsigned long *) 0xE000E100))
-
-//The address here is the base address for timer 0/its GPTMCFG, used to set bitwidth of timer
-#define GPTMCFG (*((volatile unsigned long *) 0x40030000))
-
-//The address here is the base address for timer 0 + the offset for its GPTMCTL, used to enable timer
-#define GPTMCTL (*((volatile unsigned long *) 0x4003000C))
-
-//The address here is the base address for timer 0 + the offset for its GPTMTAPR, didn't end up needing it
-//#define GPTMTAPR (*((volatile unsigned long *) 0x40030038))
-
-//The address here is the base address for timer 0 + the offset for its GPTMTAMR or Timer mode, count down periodic
-#define GPTMTAMR (*((volatile unsigned long *) 0x40030004))
-
-//The address here is the base address for timer 0 + the offset for its GPTMTAILR our init cnt for timer
-#define GPTMTAILR (*((volatile unsigned long *) 0x40030028))
-
-//The address here is the base address for timer 0 + the offset for its GPTMRIS, don't actually need it for code to work
-//#define GPTMRIS (*((volatile unsigned long *) 0x4003001C))
-
-//The address here is the base address for timer 0 + the offset for its GPTMICR, used to clear flags in gptmris
-#define GPTMICR (*((volatile unsigned long *) 0x40030024))
-
-//The address here is the base address for timer 0 + the offset for its GPTMIMR or its interrupt mask
-#define GPTMIMR (*((volatile unsigned long *) 0x40030018))
-
-
-void UART_Tx (char data) {
-    while((UART0FR & 0x20) == 1);
-    UART0DR = data;
-    //Slight delay so a single button press doesn't result in dozens of print outs which was happening
-    int n;
-    for (n = 0; n<800000; n++){};
+//Waits for previous function to finish first
+void waitOnBusy(){
+    while(GPIODATA_B & 0x80){}
 }
 
-void timerLED()
-{
-    GPIODATA_A |= 0x20;
+void delay(){
     int i;
-    for (i = 0; i<100000; i++){};
-    GPIODATA_A &= 0xFFFFFFDF;
-    GPTMICR |= 0x1;
+    for( i = 0; i < 25000;i++){}
 }
 
-void buttonInterr(){
-    UART_Tx('$');
-    //GPIOICR |= 0x4;  //this was testing icr, was having some issues
+void buttonDelay(){
+    int n;
+    for (n = 0; n<400000; n++){};
 }
 
-/**
- * main.c
- */
+void lcdWriteIR(unsigned char data){
+    //waitOnBusy();
+    GPIODATA_B = data;
+    delay();
+    GPIODATA_A &= ~RS;
+    delay();
+    GPIODATA_A &= ~RW;
+    //First set the RS values and RW values
+    delay();
+    GPIODATA_A |= EN;
+    //Setting the enable input value
+    //GPIODATA_A |= (1<<5);
+    //Putting data in
+    //Delay to match worst case timing diagrams, 3 dummy instructions
+    delay();
+    //Setting E low
+    GPIODATA_A &= ~EN;
+}
+
+void lcdWriteDr(unsigned char data){
+    //waitOnBusy();
+    //First set the RS values and RW values
+    GPIODATA_B = data;
+    GPIODATA_A |= RS;
+    GPIODATA_A &= ~RW;
+    //GPIODATA_A |= (0x01<<4);
+    //Setting the enable input value
+    delay();
+    GPIODATA_A |= EN;
+    //Putting data in
+    //Delay to match worst case timing diagrams, 3 dummy instructions
+    delay();
+    //Setting E low
+    GPIODATA_A &= ~EN;
+}
+
+//cmd value
+//#define Function_set_8bit 0x38
+//#define Entry_mode        0x06
+
+//DB0-DB7 values for functions
+//RS RW 0 for all of these
+//Clear display 00000001, clears display and resets cursor
+//Return home 0000001X, resets cursor
+//Init Function set 00111000
+//Display on DB0-7 00001100
+//Init Entry Mode set 00000110
+void initLCD(){
+    GPIODATA_A &= ~RS;
+    GPIODATA_A &= ~RW;
+    //Function Set
+    lcdWriteIR(0x38);
+    //Display settings
+    //lcdWriteIR(0x0C);
+    lcdWriteIR(0x0C);
+    //Clear display
+    lcdWriteIR(0x01);
+    ////Entry mode set
+    lcdWriteIR(0x06);
+}
+
+void clearRow(){
+    int i = 0;
+    for (i = 0; i<16; i++){
+        lcdWriteDr(32);
+    }
+    lcdWriteIR(0x02);
+}
+
+
+//Changes to start state
+void changeToStart(){
+    lcdWriteIR(0x80);
+    clearRow();
+    lcdWriteIR(0x02);
+    a = 0;
+    b = 0;
+    curDigitNum = 0;
+    state = 0;
+}
+
+//goes to initial
+void changeToInitial(){
+    //Clear display then switch to start state
+    lcdWriteIR(0x80);
+    lcdWriteIR(0x01);
+    lcdWriteIR(0x02);
+    changeToStart();
+}
+
+//Switch to display state
+void displayState(){
+    //Clears display, moves to bottom, then writes in data
+    lcdWriteIR(0x01);
+    lcdWriteIR(0x02);
+    lcdWriteIR(0xC0);
+    long newNum = a*b;
+    //Handles edge case if one of our values is zero, because our number to string conversion only works for at least 1 non zero digit.
+    if (newNum == 0){
+        lcdWriteDr('0');
+        changeToStart();
+        return;
+    }
+    char prod[20];
+    int curDigit;
+    for(curDigit = 0; newNum > 0; ++curDigit)
+    {
+      prod[curDigit] = newNum%10+'0';
+      newNum/=10;
+    }
+    int priN;
+    for (priN = curDigit; priN > 0; --priN){
+      lcdWriteDr(prod[priN-1]);
+    }
+    changeToStart();
+}
+
+//Changes state accordingly based on 8 digits reached or */D for A and B respectively
+void nextState(){
+    if (state == 0){
+        lcdWriteIR(0x02);
+        clearRow();
+        curDigitNum = 0;
+        state = 1;
+    }
+    else if (state == 1){
+        lcdWriteIR(0x01);
+        lcdWriteIR(0x02);
+        curDigitNum = 0;
+        state = 2;
+        displayState();
+    }
+}
+
+char getInput(){
+    //n stands for non valid input
+    char inp = 'n';
+    int row;
+    for (row = 0; row < 4; row++){
+        if (row == 0){
+            GPIODATA_C = 0x10;
+            if ((GPIODATA_E & 0x2)){
+                inp = '1';
+            }
+            else if ((GPIODATA_E & 0x4)){
+                inp = '2';
+            }
+            else if ((GPIODATA_E & 0x8)){
+                inp = '3';
+            }
+            GPIODATA_C = 0;
+            //means we found an input, can terminate early, same for the other row statements
+            if (inp != 'n'){
+                break;
+            }
+        }
+        else if (row == 1){
+            GPIODATA_C = 0x20;
+            if ((GPIODATA_E & 0x2)){
+                inp = '4';
+            }
+            else if ((GPIODATA_E & 0x4)){
+                inp = '5';
+            }
+            else if ((GPIODATA_E & 0x8)){
+                inp = '6';
+            }
+            GPIODATA_C = 0;
+            if (inp != 'n'){
+                break;
+            }
+        }
+        else if (row == 2){
+            GPIODATA_C = 0x40;
+            if ((GPIODATA_E & 0x2)){
+                inp = '7';
+            }
+            else if ((GPIODATA_E & 0x4)){
+                inp = '8';
+            }
+            else if ((GPIODATA_E & 0x8)){
+                inp = '9';
+            }
+            else if ((GPIODATA_E & 0x10)){
+                inp = 'C';
+            }
+            GPIODATA_C = 0;
+            if (inp != 'n'){
+                break;
+            }
+        }
+        else if (row == 3){
+            GPIODATA_C = 0x80;
+            if ((GPIODATA_E & 0x2)){
+                inp = '*';
+            }
+            else if ((GPIODATA_E & 0x4)){
+                inp = '0';
+            }
+            else if ((GPIODATA_E & 0x8)){
+                inp = '#';
+            }
+            GPIODATA_C = 0;
+            if (inp != 'n'){
+                break;
+            }
+        }
+    }
+    buttonDelay();
+    return inp;
+}
+
 int main(void)
 {
-    //Bit 0 to control the clock to UART0, done before configuring/using UART
-    RCGCUART = 0x00000001;
+    //This is us turning on the clocking of port A, B, C, and E
+    RCGCGPIO = 0x00000017;
 
-    //This is us turning on the clocking of port A, C, and E
-    RCGCGPIO = 0x00000015;
+    //This is us turning on the digital operation enabler for pin PA3-PA5
+    GPIODENA |= 0x00000038;
 
-    //This is us turning on the digital operation enabler for pin PA2 PA5 PA0
-    GPIODENA |= 0x00000026;
+    //This is us turning on the digital operation enabler for pin PB0-PB7
+    GPIODENB |= 0x000000FF;
 
     //This is us turning on the digital operation enabler for pins PC4-PC7
     GPIODENC |= 0x000000F0;
@@ -143,140 +296,44 @@ int main(void)
     //This is us turning on the digital operation enabler for pins PE1-PE4
     GPIODENE |= 0x0000001E;
 
-    //This is us setting the PA5 pin's direction to be output and PA2 pin's direction to be input
-    GPIODIRA |= 0x00000020;
-    GPIODIRA &= 0xFFFFFFFB;
+    //This is us setting the PA3-PA5 to be output
+    GPIODIRA |= 0x00000038;
+
+    //This is us setting the PB0-PB7 to be output
+    GPIODIRB |= 0x000000FF;
 
     //This is us setting our PC pins used to be outputs, and our PE pins used to be inputs
     GPIODIRC |= 0x000000F0;
     GPIODIRE &= 0xFFFFFFE1;
-
-    //Clearing the UARTEN
-    UART0CTL &= 0xFFFFFFFE;
-
-    //This is us setting the bit to be alternate
-    GPIOAFSEL |= 0x00000003;
-
-    //This is us setting the alternate function to be the UART0 ones
-    GPIOPCTL |= 0x00000011;
-
-    //Setting PA2 to be level sensitive
-    GPIOIS = 0x00000004;
-
-    //This is us setting PA2 to make the interrupt event sense high
-    GPIOIEV = 0x00000004;
-
-    //This is us turning on the bit to allow interrupts from pin PA2
-    GPIOIM |= 0x00000004;
-
-    //The integer of the result of 1MHz/9600 (baud rate), which was 104.166667
-    UART0IBRD = 104;
-
-    //The fractional calculation, which is 0.166667 * 64 + 0.5
-    UART0FBRD = 11;
-
-    //Setting UART0LCRH to match our command shell console, data frame
-    UART0LCRH = 0x60;
-
-    //Setting the reception/transmission bits alongside the UARTEN to be 1 to enable
-    UART0CTL |= 0x301;
-
-    //Turns on clock gating for timer 0 by setting bit 0 high
-    RCGCTIMER |= 0x1;
-
-    //For choosing the 32 bit timer configuration for the 16/32 bit timer under TA recommendation so that no prescalar is needed
-    //GPTMCFG = 0x4;16bit
-    GPTMCFG = 0x0;
-
-    //Periodic and down count for our timer
-    GPTMTAMR = 0x2;
-
-    //Setting 19th bit high on EN0 to enable the timer 0A interrupt and 1st bit for port A interrupt
-    EN0 |= 0x80001;
-
-    //Setting TATOIM/bit 0 to 1 to unmask the interrupt
-    GPTMIMR |= 0x1;
-
-    //Setting bit0/tatocint to 1 clear the timer A flag in GPTMRIS
-    GPTMICR |= 0x1;
-
-    //Give initcnt to the timer by setting gptmtailr to be 1second/clock cycle
-    GPTMTAILR = 16000000;
-
-    //Setting bit 0 high to enable timer 0
-    GPTMCTL |= 0x1;
-
-    //This is us turning on the pull down select for PE1-PE4 since we are using them for the columns of the matrix
-    GPIOPDR |= 0x0000001E;
-
+    initLCD();
+    changeToInitial();
+    lcdWriteIR(0x02);
     while(1)
     {
-        int row;
-        for (row = 0; row < 4; row++){
-            if (row == 0){
-                GPIODATA_C |= 0x10;
-                if ((GPIODATA_E & 0x2)){
-                    UART_Tx ('1');
-                }
-                else if ((GPIODATA_E & 0x4)){
-                    UART_Tx('2');
-                }
-                else if ((GPIODATA_E & 0x8)){
-                    UART_Tx('3');
-                }
-                else if ((GPIODATA_E & 0x10)){
-                    UART_Tx('A');
-                }
-                GPIODATA_C &= 0xFFFFFFEF;
+        char inp = getInput();
+        if (inp >= '0' && inp <= '9' && state != 2){
+            lcdWriteDr(inp);
+            if (state == 0){
+                a *= 10;
+                a += (inp-'0');
             }
-            else if (row == 1){
-                GPIODATA_C |= 0x20;
-                if ((GPIODATA_E & 0x2)){
-                    UART_Tx ('4');
-                }
-                else if ((GPIODATA_E & 0x4)){
-                    UART_Tx('5');
-                }
-                else if ((GPIODATA_E & 0x8)){
-                    UART_Tx('6');
-                }
-                else if ((GPIODATA_E & 0x10)){
-                    UART_Tx('B');
-                }
-                GPIODATA_C &= 0xFFFFFFDF;
+            else if (state == 1){
+                b *= 10;
+                b += (inp-'0');
             }
-            else if (row == 2){
-                GPIODATA_C |= 0x40;
-                if ((GPIODATA_E & 0x2)){
-                    UART_Tx ('7');
-                }
-                else if ((GPIODATA_E & 0x4)){
-                    UART_Tx('8');
-                }
-                else if ((GPIODATA_E & 0x8)){
-                    UART_Tx('9');
-                }
-                else if ((GPIODATA_E & 0x10)){
-                    UART_Tx('C');
-                }
-                GPIODATA_C &= 0xFFFFFFBF;
+            curDigitNum ++;
+            if (curDigitNum == 8){
+                nextState();
             }
-            else if (row == 3){
-                GPIODATA_C |= 0x80;
-                if ((GPIODATA_E & 0x2)){
-                    UART_Tx ('*');
-                }
-                else if ((GPIODATA_E & 0x4)){
-                    UART_Tx('0');
-                }
-                else if ((GPIODATA_E & 0x8)){
-                    UART_Tx('#');
-                }
-                else if ((GPIODATA_E & 0x10)){
-                    UART_Tx('D');
-                }
-                GPIODATA_C &= 0xFFFFFF7F;
-            }
+        }
+        else if (inp == 'C'){
+            changeToInitial();
+        }
+        else if (inp == '*' && state == 0){
+            nextState();
+        }
+        else if (inp == '#'){
+            displayState();
         }
     }
 	return 0;
