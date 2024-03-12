@@ -226,6 +226,7 @@ char getInput(){
     return inp;
 }
 
+
 void buttonDelay(){
     int n;
     for (n = 0; n<100000; n++){};
@@ -235,7 +236,6 @@ void delay(int n){
     int del = n;
     while(del--);
 }
-
 /**
  * main.c
  */
