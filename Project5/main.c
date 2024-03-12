@@ -1,340 +1,150 @@
 //The address here is the base address for system control registers + the offset for the GPIO port clock gating to control the peripheral for ports
 #define RCGCGPIO (*((volatile unsigned long *) 0x400FE608))
 
-//The address here is the base address for port A + the offset that enables digital operations on it's pins
-#define GPIODENA (*((volatile unsigned long *) 0x4000451C))
+//The address here is the base address for system control registers + the offset for the ADC clock
+#define RCGCADC (*((volatile unsigned long *) 0x400FE638))
 
-//The address here is the base address for port A + the offset for it's corresponding GPIODIR
-#define GPIODIRA (*((volatile unsigned long *) 0x40004400))
+//The address here is the the ADC0 active sample sequencer
+#define ADC0ACTSS (*((volatile unsigned long *) 0x40038000))
 
-//The address here is the base address for port A + the offset for the pins PA3-PA5, Register Select, Read/Write, and Enable Input respectively
-#define GPIODATA_A (*((volatile unsigned long *) 0x400040E0))
+//Base address for the the ADC0 active sample sequencer + offset for its ADCSSCTL3
+#define ADC0SSCTL3 (*((volatile unsigned long *) 0x400380A4))
 
-//The address here is the base address for port B + the offset that enables digital operations on it's pins
-#define GPIODENB (*((volatile unsigned long *) 0x4000551C))
+//Base address for ADC0 + the offset for its sample sequence input multiplexer select 3
+#define ADC0SSMUX (*((volatile unsigned long *) 0x400380A0))
 
-//The address here is the base address for port B + the offset for it's corresponding GPIODIR
-#define GPIODIRB (*((volatile unsigned long *) 0x40005400))
+//Base address for ADC0 + the offset for its event multiplexer select
+#define ADC0EMUX (*((volatile unsigned long *) 0x40038014))
 
-//The address here is the base address for port B + the offset for the pins PB0-PB7
-#define GPIODATA_B (*((volatile unsigned long *) 0x400053FC))
+//Base address for ADC0 + the offset for its ADCRIS/completion flags
+#define ADC0RIS (*((volatile unsigned long *) 0x40038004))
 
-//The address here is the base address for port C + the offset that enables digital operations on it's pins
-#define GPIODENC (*((volatile unsigned long *) 0x4000651C))
+//Base address for ADC0 + the offset for its ADCISC/interrupt status clear
+#define ADC0ISC (*((volatile unsigned long *) 0x4003800C))
 
-//The address here is the base address for port C + the offset for it's corresponding GPIODIR
-#define GPIODIRC (*((volatile unsigned long *) 0x40006400))
+//Base address for ADC0 + the offset for its ADCSSFIFOn/data result
+#define ADC0SSFIFO3 (*((volatile unsigned long *) 0x400380A8))
 
-//The address here is the base address for port C + the offset for the pins PC4-PC7
-#define GPIODATA_C (*((volatile unsigned long *) 0x400063C0))
+//Base address for ADC0 + the offset for its ADCPSSI
+#define ADC0PSSI (*((volatile unsigned long *) 0x40038028))
+
+//The address here is the base address for system control registers + the offset for the PWM clock gating
+#define RCGCPWM (*((volatile unsigned long *) 0x400FE640))
+
+//Base address for PWM0 + the offset for its output enable
+#define PWM0EN (*((volatile unsigned long *) 0x40028008))
+
+//Base address for PWM0 + offset for PWM0CTL, not sure if this one or other
+#define PWM0CTL (*((volatile unsigned long *) 0x40028040))
+
+//Base address for PWM0 + the offset for its PWM0LOAD
+#define PWM0LOAD (*((volatile unsigned long *) 0x40028050))
+
+//Base address for PWM0 + the offset for its PWM0COUNT
+#define PWM0COUNT (*((volatile unsigned long *) 0x40028054))
+
+//Base address for PWM0 + the offset for its PWM0CMPA
+#define PWM0CMPA (*((volatile unsigned long *) 0x40028058))
+
+//Base address for PWM0 + the offset for its PWM0CMPB
+#define PWM0CMPB (*((volatile unsigned long *) 0x4002805C))
+
+//Base address for PWM0 + the offset for its PWM0GENA/its signal generator operation
+#define PWM0GENA (*((volatile unsigned long *) 0x40028060))
 
 //The address here is the base address for port E + the offset that enables digital operations on it's pins
 #define GPIODENE (*((volatile unsigned long *) 0x4002451C))
 
-//The address here is the base address for port E + the offset for it's corresponding GPIODIR
-#define GPIODIRE (*((volatile unsigned long *) 0x40024400))
+//The address here is the base address for port E + the offset for the pins PE3
+#define GPIODATA_E (*((volatile unsigned long *) 0x40024020))
 
-//The address here is the base address for port E + the offset for it's corresponding GPIOPDR, as we are using it as the input columns for the keypad.
-#define GPIOPDR (*((volatile unsigned long *) 0x40024514))
+//The address here is the base address for port E + the offset for its AFSEL
+#define GPIOE_AFSEL (*((volatile unsigned long *) 0x40024420))
 
-//The address here is the base address for port E + the offset for the pins PC4-PC7
-#define GPIODATA_E (*((volatile unsigned long *) 0x40024078))
+//The address here is the base address for port E + the offset for its AMSEL
+#define GPIOE_AMSEL (*((volatile unsigned long *) 0x40024528))
 
-//mask
-#define RS 0x8;
-#define RW 0x10;
-#define EN 0x20;
-//A state is 0, B state is 1, Display state is 2, global so we can modify it in functions
-//Might merge start/initial state
-int state = 0;
-//Tracking nums a and b and the current number of digits for the state
-int a = 0;
-int b = 0;
-int curDigitNum = 0;
+//The address here is the base address for port B + the offset that enables digital operations on it's pins
+#define GPIODENB (*((volatile unsigned long *) 0x4000551C))
 
-//Waits for previous function to finish first
-void waitOnBusy(){
-    while(GPIODATA_B & 0x80){}
-}
+//The address here is the base address for port B + the offset for the pin PB6
+#define GPIODATA_B (*((volatile unsigned long *) 0x40005100))
 
-void delay(){
+//The address here is the base address for port B + the offset for its AFSEL
+#define GPIOB_AFSEL (*((volatile unsigned long *) 0x40005420))
+
+//The address here is the base address for port B + the offset for it's corresponding GPIOPCTL
+#define GPIOBPCTL (*((volatile unsigned long *) 0x4000552C))
+
+//Base address for system control registers + offset for run mode clock configuration
+#define RCC (*((volatile unsigned long *) 0x400FE060))
+
+void delay(long num){
     int i;
-    for( i = 0; i < 25000;i++){}
+    for( i = num; i > 0;i--){}
 }
-
-void buttonDelay(){
-    int n;
-    for (n = 0; n<400000; n++){};
-}
-
-void lcdWriteIR(unsigned char data){
-    //waitOnBusy();
-    GPIODATA_B = data;
-    delay();
-    GPIODATA_A &= ~RS;
-    delay();
-    GPIODATA_A &= ~RW;
-    //First set the RS values and RW values
-    delay();
-    GPIODATA_A |= EN;
-    //Setting the enable input value
-    //GPIODATA_A |= (1<<5);
-    //Putting data in
-    //Delay to match worst case timing diagrams, 3 dummy instructions
-    delay();
-    //Setting E low
-    GPIODATA_A &= ~EN;
-}
-
-void lcdWriteDr(unsigned char data){
-    //waitOnBusy();
-    //First set the RS values and RW values
-    GPIODATA_B = data;
-    GPIODATA_A |= RS;
-    GPIODATA_A &= ~RW;
-    //GPIODATA_A |= (0x01<<4);
-    //Setting the enable input value
-    delay();
-    GPIODATA_A |= EN;
-    //Putting data in
-    //Delay to match worst case timing diagrams, 3 dummy instructions
-    delay();
-    //Setting E low
-    GPIODATA_A &= ~EN;
-}
-
-//cmd value
-//#define Function_set_8bit 0x38
-//#define Entry_mode        0x06
-
-//DB0-DB7 values for functions
-//RS RW 0 for all of these
-//Clear display 00000001, clears display and resets cursor
-//Return home 0000001X, resets cursor
-//Init Function set 00111000
-//Display on DB0-7 00001100
-//Init Entry Mode set 00000110
-void initLCD(){
-    GPIODATA_A &= ~RS;
-    GPIODATA_A &= ~RW;
-    //Function Set
-    lcdWriteIR(0x38);
-    //Display settings
-    //lcdWriteIR(0x0C);
-    lcdWriteIR(0x0C);
-    //Clear display
-    lcdWriteIR(0x01);
-    ////Entry mode set
-    lcdWriteIR(0x06);
-}
-
-void clearRow(){
-    int i = 0;
-    for (i = 0; i<16; i++){
-        lcdWriteDr(32);
-    }
-    lcdWriteIR(0x02);
-}
-
-
-//Changes to start state
-void changeToStart(){
-    lcdWriteIR(0x80);
-    clearRow();
-    lcdWriteIR(0x02);
-    a = 0;
-    b = 0;
-    curDigitNum = 0;
-    state = 0;
-}
-
-//goes to initial
-void changeToInitial(){
-    //Clear display then switch to start state
-    lcdWriteIR(0x80);
-    lcdWriteIR(0x01);
-    lcdWriteIR(0x02);
-    changeToStart();
-}
-
-//Switch to display state
-void displayState(){
-    //Clears display, moves to bottom, then writes in data
-    lcdWriteIR(0x01);
-    lcdWriteIR(0x02);
-    lcdWriteIR(0xC0);
-    long newNum = a*b;
-    //Handles edge case if one of our values is zero, because our number to string conversion only works for at least 1 non zero digit.
-    if (newNum == 0){
-        lcdWriteDr('0');
-        changeToStart();
-        return;
-    }
-    char prod[20];
-    int curDigit;
-    for(curDigit = 0; newNum > 0; ++curDigit)
-    {
-      prod[curDigit] = newNum%10+'0';
-      newNum/=10;
-    }
-    int priN;
-    for (priN = curDigit; priN > 0; --priN){
-      lcdWriteDr(prod[priN-1]);
-    }
-    changeToStart();
-}
-
-//Changes state accordingly based on 8 digits reached or */D for A and B respectively
-void nextState(){
-    if (state == 0){
-        lcdWriteIR(0x02);
-        clearRow();
-        curDigitNum = 0;
-        state = 1;
-    }
-    else if (state == 1){
-        lcdWriteIR(0x01);
-        lcdWriteIR(0x02);
-        curDigitNum = 0;
-        state = 2;
-        displayState();
-    }
-}
-
-char getInput(){
-    //n stands for non valid input
-    char inp = 'n';
-    int row;
-    for (row = 0; row < 4; row++){
-        if (row == 0){
-            GPIODATA_C = 0x10;
-            if ((GPIODATA_E & 0x2)){
-                inp = '1';
-            }
-            else if ((GPIODATA_E & 0x4)){
-                inp = '2';
-            }
-            else if ((GPIODATA_E & 0x8)){
-                inp = '3';
-            }
-            GPIODATA_C = 0;
-            //means we found an input, can terminate early, same for the other row statements
-            if (inp != 'n'){
-                break;
-            }
-        }
-        else if (row == 1){
-            GPIODATA_C = 0x20;
-            if ((GPIODATA_E & 0x2)){
-                inp = '4';
-            }
-            else if ((GPIODATA_E & 0x4)){
-                inp = '5';
-            }
-            else if ((GPIODATA_E & 0x8)){
-                inp = '6';
-            }
-            GPIODATA_C = 0;
-            if (inp != 'n'){
-                break;
-            }
-        }
-        else if (row == 2){
-            GPIODATA_C = 0x40;
-            if ((GPIODATA_E & 0x2)){
-                inp = '7';
-            }
-            else if ((GPIODATA_E & 0x4)){
-                inp = '8';
-            }
-            else if ((GPIODATA_E & 0x8)){
-                inp = '9';
-            }
-            else if ((GPIODATA_E & 0x10)){
-                inp = 'C';
-            }
-            GPIODATA_C = 0;
-            if (inp != 'n'){
-                break;
-            }
-        }
-        else if (row == 3){
-            GPIODATA_C = 0x80;
-            if ((GPIODATA_E & 0x2)){
-                inp = '*';
-            }
-            else if ((GPIODATA_E & 0x4)){
-                inp = '0';
-            }
-            else if ((GPIODATA_E & 0x8)){
-                inp = '#';
-            }
-            GPIODATA_C = 0;
-            if (inp != 'n'){
-                break;
-            }
-        }
-    }
-    buttonDelay();
-    return inp;
-}
-
+/**
+ * main.c
+ */
 int main(void)
 {
-    //This is us turning on the clocking of port A, B, C, and E
-    RCGCGPIO = 0x00000017;
-
-    //This is us turning on the digital operation enabler for pin PA3-PA5
-    GPIODENA |= 0x00000038;
-
-    //This is us turning on the digital operation enabler for pin PB0-PB7
-    GPIODENB |= 0x000000FF;
-
-    //This is us turning on the digital operation enabler for pins PC4-PC7
-    GPIODENC |= 0x000000F0;
-
-    //This is us turning on the digital operation enabler for pins PE1-PE4
-    GPIODENE |= 0x0000001E;
-
-    //This is us setting the PA3-PA5 to be output
-    GPIODIRA |= 0x00000038;
-
-    //This is us setting the PB0-PB7 to be output
-    GPIODIRB |= 0x000000FF;
-
-    //This is us setting our PC pins used to be outputs, and our PE pins used to be inputs
-    GPIODIRC |= 0x000000F0;
-    GPIODIRE &= 0xFFFFFFE1;
-    initLCD();
-    changeToInitial();
-    lcdWriteIR(0x02);
-    while(1)
-    {
-        char inp = getInput();
-        if (inp >= '0' && inp <= '9' && state != 2){
-            lcdWriteDr(inp);
-            if (state == 0){
-                a *= 10;
-                a += (inp-'0');
-            }
-            else if (state == 1){
-                b *= 10;
-                b += (inp-'0');
-            }
-            curDigitNum ++;
-            if (curDigitNum == 8){
-                nextState();
-            }
-        }
-        else if (inp == 'C'){
-            changeToInitial();
-        }
-        else if (inp == '*' && state == 0){
-            nextState();
-        }
-        else if (inp == '#'){
-            displayState();
-        }
+    //Us turning on clock gating for ports E and B
+    RCGCGPIO |= 0x00000012;
+    //Us turning on clock gating for PWM0
+    RCGCADC |= 0x00000001;
+    //This is us setting the bit corresponding to PE3 to be alternate
+    GPIOE_AFSEL |= (1<<3);
+    //This is us making PE3 analog
+    GPIODENE &= (~(1<<3));
+    //This is us enabling the analog function of PE3
+    GPIOE_AMSEL |= (1<<3);
+    //This is us disabling sample sequencer 3 as we adjust it's settings
+    ADC0ACTSS &= (~(1<<3));
+    //This is us setting the event multiplexer for SS3 to be processor
+    ADC0EMUX &= (~(0xF000));
+    //This is us configuring the input source for ADCSSMUX3
+    ADC0SSMUX = 0x0;
+    //This is us configuring sample sequencer 3 settings to enable the interrupt when conversion is done bit/interrupt signal that lets it read values 2 and to set the end of sequence bit 1
+    ADC0SSCTL3 |= (1<<1) | (1<<2);
+    //This is us choosing sample sequencer 3
+    ADC0ACTSS |= (1<<3);
+    //Turning on clock gating for PWM0
+    RCGCPWM = 0x1;
+    //Making sure we dont use the divider, Harris said probably don't need this but we did it in case
+    RCC &= (~(1<<20));
+    //Making PB6 alternate function pin
+    GPIOB_AFSEL |= (1<<6);
+    //Setting the alternate function for PB6 to be the one corresponding to PWM0Channel0
+    GPIOBPCTL = 0x04000000;
+    //Digitally enable PB6
+    GPIODENB |= (1<<6);
+    //Disable the PWM counter as we configure it
+    PWM0CTL &= (~(1));
+    //Down count mode
+    PWM0CTL &= (~(1<<1));
+    //Setting pwm0Load to be 16000
+    PWM0LOAD = 16000;
+    //Duty cycle 60% initially (our min)
+    PWM0CMPA = 9600;
+    //Settings to control what happens for each event, we When our pwm counter equals our load value,
+    //we want our pwm pin to go high, and when the counter matches our comparator A value while counting down, we want our pwm pin to go down.
+    PWM0GENA |= (1<<2) | (1<<3) | (1<<7);
+    //Enable the generator counter
+    PWM0CTL |= (0x1);
+    //Enable the pwm output for channel 0
+    PWM0EN |= 0x1;
+    long adcVal;
+    while(1){
+        //Us starting sampling on SS3
+        ADC0PSSI |= (1<<3);
+        //Wait if busy
+        while((ADC0RIS & 0x8) == 0x0){}
+        adcVal = ADC0SSFIFO3;
+        ADC0ISC |= (1<<3);
+        //Find what percent our adcVal is out of the max it can be, used later for the duty cycle
+        double perc = (double)adcVal/4096;
+        PWM0CMPA = (9600+(perc*6400));
+        delay(1000000);
     }
-	return 0;
+    return 0;
 }
